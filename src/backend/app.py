@@ -1,5 +1,5 @@
 from flask import Flask, request, Response
-from ..pipline import Pipeline
+from pipline import Pipeline
 import numpy as np
 import cv2
 
