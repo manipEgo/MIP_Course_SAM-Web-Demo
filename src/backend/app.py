@@ -3,7 +3,14 @@ from pipline import Pipeline
 import numpy as np
 import cv2
 
-checkpoint = "/home/mpyg/Documents/Codes/MIP_SAM/model/sam_vit_h_4b8939.pth"
+from os import path
+
+file_path = path.abspath(__file__)
+project_path = path.dirname(path.dirname(path.dirname(file_path)))
+print(file_path)
+print(project_path)
+
+checkpoint = path.join(project_path, "model/sam_vit_h_4b8939.pth")
 model_type = "vit_h"
 
 app = Flask(__name__)
@@ -18,22 +25,22 @@ def upload_image():
     print(image)
     if image is None:
         return "image not found"
-    image.save("../img/"+data+".png")
+    image.save(path.join(project_path, r'img/{}.png'.format(data)))
     return r'/img/{}.png'.format(data)
 
 @app.route("/img/<imageId>.png")
 def get_frame(imageId):
-    with open(r'../img/{}.png'.format(imageId), 'rb') as f: 	
+    with open(path.join(project_path, r'img/{}.png'.format(imageId)), 'rb') as f: 	
         image = f.read()
         resp = Response(image, mimetype="image/png")
         return resp
 
 @app.route('/process/<imageId>.png', methods=['POST'])
 def proceed_image(imageId):
-    image = cv2.imread(r'../img/{}.png'.format(imageId))
+    image = cv2.imread(path.join(project_path, r'img/{}.png'.format(imageId)))
     image =  pipeline.pipeline(image)
-    cv2.imwrite(r'../img/{}_sam.png'.format(imageId), image)
-    with open(r'../img/{}_sam.png'.format(imageId), 'rb') as f: 	
+    cv2.imwrite(path.join(project_path, r'img/{}_sam.png'.format(imageId)), image)
+    with open(path.join(project_path, r'img/{}_sam.png'.format(imageId)), 'rb') as f: 	
         image = f.read()
         resp = Response(image, mimetype="image/png")
         return resp
