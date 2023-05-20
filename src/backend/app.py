@@ -7,8 +7,6 @@ from os import path
 
 file_path = path.abspath(__file__)
 project_path = path.dirname(path.dirname(path.dirname(file_path)))
-print(file_path)
-print(project_path)
 
 checkpoint = path.join(project_path, "model/sam_vit_h_4b8939.pth")
 model_type = "vit_h"
@@ -35,8 +33,8 @@ def get_frame(imageId):
         resp = Response(image, mimetype="image/png")
         return resp
 
-@app.route('/process/<imageId>.png', methods=['POST'])
-def proceed_image(imageId):
+@app.route('/process/<imageId>.png')
+def get_sam_image(imageId):
     image = cv2.imread(path.join(project_path, r'img/{}.png'.format(imageId)))
     image =  pipeline.pipeline(image)
     cv2.imwrite(path.join(project_path, r'img/{}_sam.png'.format(imageId)), image)
@@ -46,4 +44,4 @@ def proceed_image(imageId):
         return resp
 
 if __name__ == "__main__":
-	app.run(host='0.0.0.0', port=8080, debug=True)
+	app.run(host='0.0.0.0', port=8080, debug=True, use_reloader=False)
