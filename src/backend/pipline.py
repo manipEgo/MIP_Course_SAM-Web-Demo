@@ -1,4 +1,6 @@
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+from matplotlib.figure import Figure
 import numpy as np
 
 from typing import Any, Dict, List
@@ -26,5 +28,16 @@ class Pipeline:
         return Pipeline.mask_generator.generate(image)
     
     def pipeline(self, image:np.ndarray) -> np.ndarray:
-        return self.make_anns(self.make_masks(image))
+        anns = self.make_anns(self.make_masks(image))
+        fig = Figure(figsize=(10,10))
+        canvas = FigureCanvasAgg(fig)
+        ax = fig.gca()
+        ax.imshow(image)
+        ax.imshow(anns)
+        ax.axis('off')
+        ax.margins(0)
+        fig.tight_layout(pad=0)
+        canvas.draw()
+        buf = canvas.buffer_rgba()
+        return np.asarray(buf)
 
