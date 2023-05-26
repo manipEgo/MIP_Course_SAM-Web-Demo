@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 
 import os
+import os.path as path
 import math
 
 
@@ -32,11 +33,12 @@ def slide_win_cut_imgs(img: np.ndarray, win_size: tuple = (10, 10), count: tuple
 def read_imgs(dir_path: str) -> np.ndarray:
     img_list = []
     for _, img_path in enumerate(os.listdir(dir_path)):
-        image = cv2.imread(dir_path + img_path)
-        image = image[:2048, :, :]
-        if image.shape != (2048, 2048, 3):
-            continue
-        img_list.append(image)
+        if path.isfile(path.join(dir_path, img_path)):
+            image = cv2.imread(path.join(dir_path, img_path))
+            image = image[:2048, :, :]
+            if image.shape != (2048, 2048, 3):
+                continue
+            img_list.append(image)
     return np.asarray(img_list)
 
 
@@ -50,3 +52,12 @@ def save_imgs(imgs: np.ndarray, dir_path: str, prefix: str = 'img_0') -> None:
         cv2.imwrite(dir_path + prefix + '_clip_0.jpg', imgs)
     else:
         print("Wrong imgs shape")
+
+def list_dirs(dir_path: str) -> list:
+    dirs = [dir_path]
+    for dir in dirs:
+        if path.isdir(dir):
+            for _, sec_dir in enumerate(os.listdir(dir_path)):
+                if path.isdir(path.join(dir, sec_dir)):
+                    dirs.append(path.join(dir, sec_dir))
+    return dirs
