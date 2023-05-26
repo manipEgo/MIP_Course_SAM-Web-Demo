@@ -55,6 +55,17 @@ def save_imgs(imgs: np.ndarray, dir_path: str, prefix: str = 'img_0') -> None:
     else:
         print("Wrong imgs shape")
 
+def save_imgs_png(imgs: np.ndarray, dir_path: str, prefix: str = 'img_0') -> None:
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+    if len(imgs.shape) == 4:
+        for i, img in enumerate(imgs):  # imgs
+            cv2.imwrite(path.join(dir_path, prefix + '_clip_' + str(i) + '.png'), img)
+    elif len(imgs.shape) == 3:  # single img
+        cv2.imwrite(path.join(dir_path, prefix + '_clip_0.png'), imgs)
+    else:
+        print("Wrong imgs shape")
+
 def list_dirs(dir_path: str) -> list:
     dirs = [dir_path]
     idx = 0

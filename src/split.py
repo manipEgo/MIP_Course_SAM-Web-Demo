@@ -36,6 +36,10 @@ for dir in tqdm(dirs):
         for mask in masks:
             cov_img = np.zeros(images[i].shape, dtype=int)
             cov_img[np.where(mask['segmentation'])] = images[i][np.where(mask['segmentation'])]
-            res.append(cov_img)
-        save_imgs(np.asarray(res), path.join(sam_root, names[i]), names[i])
+            b_channel, g_channel, r_channel = cv2.split(cov_img)
+            alpha_channel = np.zeros(b_channel.shape, dtype=b_channel.dtype)
+            alpha_channel[np.where(mask['segmentation'])] = 255
+            img_BGRA = cv2.merge((b_channel, g_channel, r_channel, alpha_channel))
+            res.append(img_BGRA)
+        save_imgs_png(np.asarray(res), path.join(sam_root, names[i]), names[i])
 print("========== sam finished. ==========")
