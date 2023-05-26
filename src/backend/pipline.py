@@ -9,7 +9,13 @@ class Pipeline:
     def __init__(self, checkpoint, model_type) -> None:
         Pipeline.sam = sam_model_registry[model_type](checkpoint=checkpoint)
         Pipeline.sam.to('cuda')
-        Pipeline.mask_generator = SamAutomaticMaskGenerator(Pipeline.sam)
+        Pipeline.mask_generator = SamAutomaticMaskGenerator(
+            Pipeline.sam,
+            pred_iou_thresh=0.94,
+            stability_score_thresh=0.,
+            crop_n_layers=1,
+            crop_n_points_downscale_factor=8,
+            min_mask_region_area=1024)
     
     def make_anns(self, anns:List[Dict[str, Any]]) -> np.ndarray:
         if len(anns) == 0:
@@ -29,7 +35,7 @@ class Pipeline:
     
     def pipeline(self, image:np.ndarray) -> np.ndarray:
         anns = self.make_anns(self.make_masks(image))
-        fig = Figure(figsize=(10,10))
+        fig = Figure()
         canvas = FigureCanvasAgg(fig)
         ax = fig.gca()
         ax.imshow(image)
