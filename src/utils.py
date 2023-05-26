@@ -30,16 +30,18 @@ def slide_win_cut_imgs(img: np.ndarray, win_size: tuple = (10, 10), count: tuple
     return np.asarray(img_list)
 
 
-def read_imgs(dir_path: str) -> np.ndarray:
+def read_imgs(dir_path: str, shape: tuple) -> np.ndarray | list:
     img_list = []
+    name_list = []
     for _, img_path in enumerate(os.listdir(dir_path)):
         if path.isfile(path.join(dir_path, img_path)):
             image = cv2.imread(path.join(dir_path, img_path))
             image = image[:2048, :, :]
-            if image.shape != (2048, 2048, 3):
+            if image.shape != shape:
                 continue
             img_list.append(image)
-    return np.asarray(img_list)
+            name_list.append(img_path)
+    return np.asarray(img_list), name_list
 
 
 def save_imgs(imgs: np.ndarray, dir_path: str, prefix: str = 'img_0') -> None:
