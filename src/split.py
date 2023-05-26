@@ -34,6 +34,8 @@ for dir in tqdm(dirs):
         masks = pipeline.make_masks(images[i])
         res = []
         for mask in masks:
+            if (np.sum(np.where(mask['segmentation'])) < 128):
+                continue
             cov_img = np.zeros(images[i].shape, dtype=int)
             cov_img[np.where(mask['segmentation'])] = images[i][np.where(mask['segmentation'])]
             b_channel, g_channel, r_channel = cv2.split(cov_img)
