@@ -55,19 +55,16 @@ class Pipeline:
             img[m] = color_mask
         return img
     
-    def split(self, image:np.ndarray, anns:List[Dict[str, Any]], pivot:tuple, shape:tuple) -> List[torch.Tensor]:
+    def split(self, image:np.ndarray, anns:List[Dict[str, Any]]) -> List[torch.Tensor]:
         res = []
         for mask in anns:
-            if (np.sum(np.where(mask['segmentation'])) < 128):
-                continue
+            # if (np.sum(np.where(mask['segmentation'])) < 128):
+            #     continue
             cov_img = np.zeros(image.shape, dtype=int)
             cov_img[np.where(mask['segmentation'])] = image[np.where(mask['segmentation'])]
             b_channel, g_channel, r_channel = cv2.split(cov_img)
             img_RGB = cv2.merge((r_channel, g_channel, b_channel))
             img = torch.from_numpy(img_RGB).permute(2, 0, 1)/255
-            img = img[pivot[0]:pivot[0]+shape[0], pivot[1]:pivot[1]+shape[1], :]
-            if torch.sum(img) == 0.:
-                continue
             res.append(img)
         return res
     
@@ -85,17 +82,26 @@ class Pipeline:
     
     def pipeline(self, image:np.ndarray) -> np.ndarray:
         H, W = image.shape[0]//224, image.shape[1]//224
+        image = image[:H * 224, :W * 224]
+        imgs = slide_win_cut_imgs(image, (224, 224), (H, W))
         masks = []
-        anns = self.make_masks(image)
-        for x in range(0, image.shape[0], 224):
-            for y in range(0, image.shape[1], 224):
-                splited_imgs = self.split(image, anns, (x, y), (224, 224))
+        for i, img in enumerate(imgs):
+            print("no." + str(i))
+            anns = self.make_masks(img)
+            if len(anns) > 0:
+                splited_imgs = self.split(img, anns)
                 loader = DataLoader(Dataset(splited_imgs, torch.zeros(len(splited_imgs))))
                 classes = self.classify(loader)
                 anns = self.make_class_anns(anns, classes)
-                masks.append(anns)
+            else:
+                anns = np.zeros((img.shape[0], img.shape[1], 4))
+            masks.append(anns)
         masks = np.asarray(masks)
-        masks.reshape((image.shape))
+        lines = []
+        for row in range(H):
+            lines.append(np.concatenate(masks[row * W:(row+1) * W], axis=1))
+        lines = np.asarray(lines)
+        masks = np.concatenate(lines, axis=0)
         fig = Figure()
         canvas = FigureCanvasAgg(fig)
         ax = fig.gca()
