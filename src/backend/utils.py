@@ -16,8 +16,18 @@ def slide_win_cut_imgs(img: np.ndarray, win_size: tuple = (10, 10), count: tuple
 
     W, H, _ = img.shape
     win_x, win_y = win_size
-    x_step = math.floor((W - win_x) / (count[0] - 1))
-    y_step = math.floor((H - win_y) / (count[1] - 1))
+    if count[0] < 1 or count[1] < 1:
+        print("Wrong count")
+        print(count)
+        return None
+    if count[0] == 1:
+        x_step = W
+    else:
+        x_step = math.floor((W - win_x) / (count[0] - 1))
+    if count[1] == 1:
+        y_step = H
+    else:
+        y_step = math.floor((H - win_y) / (count[1] - 1))
 
     img_list = []
     for x_ in range(0, W, x_step):
