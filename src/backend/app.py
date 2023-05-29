@@ -1,19 +1,22 @@
 from flask import Flask, request, send_file
 from flask_cors import *
-from pipline import Pipeline
 import numpy as np
 import cv2
 
 from os import path
 
+from pipline import Pipeline
+from classifier import VGG16
+
 file_path = path.abspath(__file__)
 project_path = path.dirname(path.dirname(path.dirname(file_path)))
 
 checkpoint = path.join(project_path, "model/sam_vit_h_4b8939.pth")
+classifier = path.join(project_path, "model/classifier_0.pth")
 model_type = "vit_h"
 
 app = Flask(__name__)
-pipeline = Pipeline(checkpoint, model_type)
+pipeline = Pipeline(checkpoint, model_type, classifier)
 
 @app.route('/upload', methods=['POST'])
 @cross_origin(supports_credentials=True)
