@@ -1,4 +1,5 @@
-from flask import Flask, request, Response
+from flask import Flask, request, send_file
+from flask_cors import *
 from pipline import Pipeline
 import numpy as np
 import cv2
@@ -15,6 +16,7 @@ app = Flask(__name__)
 pipeline = Pipeline(checkpoint, model_type)
 
 @app.route('/upload', methods=['POST'])
+@cross_origin(supports_credentials=True)
 def upload_image():
     image = request.files.get("image")
     data = request.form.get("filename")
@@ -24,24 +26,22 @@ def upload_image():
     if image is None:
         return "image not found"
     image.save(path.join(project_path, r'img/{}.png'.format(data)))
-    return r'/img/{}.png'.format(data)
+    return r'{}'.format(data)
 
 @app.route("/img/<imageId>.png")
+@cross_origin(supports_credentials=True)
 def get_frame(imageId):
-    with open(path.join(project_path, r'img/{}.png'.format(imageId)), 'rb') as f: 	
-        image = f.read()
-        resp = Response(image, mimetype="image/png")
-        return resp
+    resp = send_file(path.join(project_path, r'img/{}.png'.format(imageId)), mimetype="image/png")
+    return resp
 
 @app.route('/process/<imageId>.png')
+@cross_origin(supports_credentials=True)
 def get_sam_image(imageId):
     image = cv2.imread(path.join(project_path, r'img/{}.png'.format(imageId)))
     image =  pipeline.pipeline(image)
     cv2.imwrite(path.join(project_path, r'img/{}_sam.png'.format(imageId)), image)
-    with open(path.join(project_path, r'img/{}_sam.png'.format(imageId)), 'rb') as f: 	
-        image = f.read()
-        resp = Response(image, mimetype="image/png")
-        return resp
+    resp = send_file(path.join(project_path, r'img/{}_sam.png'.format(imageId)), mimetype="image/png")
+    return resp
 
 if __name__ == "__main__":
 	app.run(host='0.0.0.0', port=8080, debug=True, use_reloader=False)
