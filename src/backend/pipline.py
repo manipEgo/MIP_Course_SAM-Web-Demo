@@ -9,6 +9,7 @@ import cv2
 from typing import Any, Dict, List
 
 from classifier import VGG16, Dataset
+from utils import *
 
 class Pipeline:
     def __init__(self, checkpoint:str, model_type:str, classifier:str) -> None:
@@ -45,16 +46,16 @@ class Pipeline:
         img = np.ones((sorted_anns[0]['segmentation'].shape[0], sorted_anns[0]['segmentation'].shape[1], 4))
         img[:,:,3] = 0
 
-        color_list = []
-        for _ in range(len(np.unique(classes))):
-            color_list.append(np.concatenate([np.random.random(3), [0.35]]))
+        color_list = [np.array([1., 0., 0., 0.35]), np.array([0., 1., 0., 0.35]), np.array([0., 0., 1., 0.35])]
+        print(classes)
+        print(len(sorted_anns))
         for i, ann in enumerate(sorted_anns):
             m = ann['segmentation']
             color_mask = color_list[classes[i]]
             img[m] = color_mask
         return img
     
-    def split(self, image:np.ndarray, anns:List[Dict[str, Any]]) -> List[torch.Tensor]:
+    def split(self, image:np.ndarray, anns:List[Dict[str, Any]], pivot:tuple, shape:tuple) -> List[torch.Tensor]:
         res = []
         for mask in anns:
             if (np.sum(np.where(mask['segmentation'])) < 128):
@@ -64,6 +65,9 @@ class Pipeline:
             b_channel, g_channel, r_channel = cv2.split(cov_img)
             img_RGB = cv2.merge((r_channel, g_channel, b_channel))
             img = torch.from_numpy(img_RGB).permute(2, 0, 1)/255
+            img = img[pivot[0]:pivot[0]+shape[0], pivot[1]:pivot[1]+shape[1], :]
+            if torch.sum(img) == 0.:
+                continue
             res.append(img)
         return res
     
@@ -80,17 +84,23 @@ class Pipeline:
         return Pipeline.mask_generator.generate(image)
     
     def pipeline(self, image:np.ndarray) -> np.ndarray:
+        H, W = image.shape[0]//224, image.shape[1]//224
+        masks = []
         anns = self.make_masks(image)
-        splited_imgs = self.split(image, anns)
-        loader = DataLoader(Dataset(splited_imgs, torch.zeros(len(splited_imgs))))
-        classes = self.classify(loader)
-        anns = self.make_class_anns(anns, classes)
-        # anns = self.make_anns(self.make_masks(image))
+        for x in range(0, image.shape[0], 224):
+            for y in range(0, image.shape[1], 224):
+                splited_imgs = self.split(image, anns, (x, y), (224, 224))
+                loader = DataLoader(Dataset(splited_imgs, torch.zeros(len(splited_imgs))))
+                classes = self.classify(loader)
+                anns = self.make_class_anns(anns, classes)
+                masks.append(anns)
+        masks = np.asarray(masks)
+        masks.reshape((image.shape))
         fig = Figure()
         canvas = FigureCanvasAgg(fig)
         ax = fig.gca()
         ax.imshow(image)
-        ax.imshow(anns)
+        ax.imshow(masks)
         ax.axis('off')
         ax.margins(0)
         fig.tight_layout(pad=0)
