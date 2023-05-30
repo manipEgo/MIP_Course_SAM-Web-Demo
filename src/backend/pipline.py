@@ -72,12 +72,14 @@ class Pipeline:
     
     def classify(self, loader:DataLoader) -> np.ndarray:
         res = []
+        confidence = []
         for inputs, targets in loader:
             with torch.no_grad():
                 outputs = Pipeline.classifier(inputs.to('cuda'))
             for output in outputs:
                 res.append(torch.argmax(output).item())
-        return np.asarray(res)
+                confidence.append(torch.max(torch.softmax(output, dim=0)).item())
+        return np.asarray(res), np.asarray(confidence)
     
     def make_masks(self, image:np.ndarray) -> List[Dict[str, Any]]:
         return Pipeline.mask_generator.generate(image)
@@ -87,13 +89,29 @@ class Pipeline:
         image = image[:H * 224, :W * 224]
         imgs = slide_win_cut_imgs(image, (224, 224), (H, W))
         masks = []
+        class1 = 0
+        class2 = 0
+        class3 = 0
+        confi1 = np.zeros((10), dtype=int)
+        confi2 = np.zeros((10), dtype=int)
+        confi3 = np.zeros((10), dtype=int)
         for i, img in enumerate(imgs):
             print("no." + str(i))
             anns = self.make_masks(img)
             if len(anns) > 0:
                 splited_imgs = self.split(img, anns)
                 loader = DataLoader(Dataset(splited_imgs, torch.zeros(len(splited_imgs))))
-                classes = self.classify(loader)
+                classes, confidences = self.classify(loader)
+                class1 += np.sum(np.where(classes == 0))
+                class2 += np.sum(np.where(classes == 1))
+                class3 += np.sum(np.where(classes == 2))
+                for i in range(len(classes)):
+                    if classes[i] == 0:
+                        confi1[int(confidences[i]//0.1)] += 1
+                    elif classes[i] == 1:
+                        confi2[int(confidences[i]//0.1)] += 1
+                    elif classes[i] == 2:
+                        confi3[int(confidences[i]//0.1)] += 1
                 anns = self.make_class_anns(anns, classes)
             else:
                 anns = np.zeros((img.shape[0], img.shape[1], 4))
@@ -105,6 +123,7 @@ class Pipeline:
         lines = np.asarray(lines)
         masks = np.concatenate(lines, axis=0)
 
+        # sam integral
         px = 1/plt.rcParams['figure.dpi']
         fig = Figure(figsize=(image.shape[0] * px, image.shape[1] * px))
         canvas = FigureCanvasAgg(fig)
@@ -118,16 +137,51 @@ class Pipeline:
         buf = canvas.buffer_rgba()
         integral = np.asarray(buf)
 
+        # confidence bar
+        x = np.arange(len(confi1))
+        width = 0.2
+        fig = Figure()
+        canvas = FigureCanvasAgg(fig)
+        ax = fig.gca()
+        ax.bar(x - width, confi1, width=width, label='class1')
+        ax.bar(x, confi2, width=width, label='class2')
+        ax.bar(x + width, confi3, width=width, label='class3')
+        ax.set_xlabel('confidence range')
+        ax.set_ylabel('count')
+        ax.set_title('Classifier Confidences Distribution')
+        ax.legend()
+        canvas.draw()
+        buf = canvas.buffer_rgba()
+        analysis1 = np.asarray(buf)
+
+        # masks
         mask1 = np.zeros(masks.shape, dtype=int)
         mask2 = np.zeros(masks.shape, dtype=int)
         mask3 = np.zeros(masks.shape, dtype=int)
+        area1 = 0
+        area2 = 0
+        area3 = 0
         for x in range(masks.shape[0]):
             for y in range(masks.shape[1]):
                 if (masks[x, y] == COLOR_LIST[0]).all():
                     mask1[x, y] = COLOR_LIST[0] * 255
+                    area1 += 1
                 elif (masks[x, y] == COLOR_LIST[1]).all():
                     mask2[x, y] = COLOR_LIST[1] * 255
+                    area2 += 1
                 elif (masks[x, y] == COLOR_LIST[2]).all():
                     mask3[x, y] = COLOR_LIST[2] * 255
-        return integral, mask1, mask2, mask3
+                    area3 += 1
+
+        # area pie
+        fig = Figure()
+        canvas = FigureCanvasAgg(fig)
+        ax = fig.gca()
+        ax.pie([area1, area2, area3], labels=['class1', 'class2', 'class3'])
+        ax.set_title('Areas of each Class')
+        ax.legend()
+        canvas.draw()
+        buf = canvas.buffer_rgba()
+        analysis2 = np.asarray(buf)
+        return integral, mask1, mask2, mask3, analysis1, analysis2
 

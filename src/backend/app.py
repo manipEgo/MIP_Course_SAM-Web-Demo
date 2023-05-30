@@ -41,11 +41,13 @@ def get_frame(imageId):
 @cross_origin(supports_credentials=True)
 def get_sam_image(imageId):
     image = cv2.imread(path.join(project_path, r'img/{}.png'.format(imageId)))
-    image, mask1, mask2, mask3 =  pipeline.pipeline(image)
+    image, mask1, mask2, mask3, analysis1, analysis2 =  pipeline.pipeline(image)
     cv2.imwrite(path.join(project_path, r'img/{}_sam.png'.format(imageId)), image)
     cv2.imwrite(path.join(project_path, r'img/{}_mask1.png'.format(imageId)), mask1)
     cv2.imwrite(path.join(project_path, r'img/{}_mask2.png'.format(imageId)), mask2)
     cv2.imwrite(path.join(project_path, r'img/{}_mask3.png'.format(imageId)), mask3)
+    cv2.imwrite(path.join(project_path, r'img/{}_analysis1.png'.format(imageId)), analysis1)
+    cv2.imwrite(path.join(project_path, r'img/{}_analysis2.png'.format(imageId)), analysis2)
     resp = send_file(path.join(project_path, r'img/{}_sam.png'.format(imageId)), mimetype="image/png")
     return resp
 
