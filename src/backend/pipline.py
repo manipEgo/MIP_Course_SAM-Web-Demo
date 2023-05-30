@@ -1,6 +1,7 @@
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
@@ -10,6 +11,8 @@ from typing import Any, Dict, List
 
 from classifier import VGG16, Dataset
 from utils import *
+
+COLOR_LIST = [np.array([1., 0., 0., 0.35]), np.array([0., 1., 0., 0.35]), np.array([0., 0., 1., 0.35])]
 
 class Pipeline:
     def __init__(self, checkpoint:str, model_type:str, classifier:str) -> None:
@@ -46,12 +49,11 @@ class Pipeline:
         img = np.ones((sorted_anns[0]['segmentation'].shape[0], sorted_anns[0]['segmentation'].shape[1], 4))
         img[:,:,3] = 0
 
-        color_list = [np.array([1., 0., 0., 0.35]), np.array([0., 1., 0., 0.35]), np.array([0., 0., 1., 0.35])]
         print(classes)
         print(len(sorted_anns))
         for i, ann in enumerate(sorted_anns):
             m = ann['segmentation']
-            color_mask = color_list[classes[i]]
+            color_mask = COLOR_LIST[classes[i]]
             img[m] = color_mask
         return img
     
@@ -102,7 +104,9 @@ class Pipeline:
             lines.append(np.concatenate(masks[row * W:(row+1) * W], axis=1))
         lines = np.asarray(lines)
         masks = np.concatenate(lines, axis=0)
-        fig = Figure()
+
+        px = 1/plt.rcParams['figure.dpi']
+        fig = Figure(figsize=(image.shape[0] * px, image.shape[1] * px))
         canvas = FigureCanvasAgg(fig)
         ax = fig.gca()
         ax.imshow(image)
@@ -112,5 +116,18 @@ class Pipeline:
         fig.tight_layout(pad=0)
         canvas.draw()
         buf = canvas.buffer_rgba()
-        return np.asarray(buf)
+        integral = np.asarray(buf)
+
+        mask1 = np.zeros(masks.shape, dtype=int)
+        mask2 = np.zeros(masks.shape, dtype=int)
+        mask3 = np.zeros(masks.shape, dtype=int)
+        for x in range(masks.shape[0]):
+            for y in range(masks.shape[1]):
+                if (masks[x, y] == COLOR_LIST[0]).all():
+                    mask1[x, y] = COLOR_LIST[0] * 255
+                elif (masks[x, y] == COLOR_LIST[1]).all():
+                    mask2[x, y] = COLOR_LIST[1] * 255
+                elif (masks[x, y] == COLOR_LIST[2]).all():
+                    mask3[x, y] = COLOR_LIST[2] * 255
+        return integral, mask1, mask2, mask3
 
